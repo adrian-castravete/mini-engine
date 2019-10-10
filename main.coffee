@@ -1,8 +1,9 @@
 import Game from "./game.js"
 
 main = ->
-  paper = document.getElementById "paper"
-  app = new Game paper
+  app = new Game()
+  document.body.appendChild app.view
+  app.resizeTo = window
   app.start()
 
 main()

@@ -1,11 +1,14 @@
-export default class Application
+export default class Application extends PIXI.Application
 
-  constructor: (cvs) ->
-    @_canvas = cvs
-    cvs.width = 640
-    cvs.height = 400
-    @_context = cvs.getContext "2d"
+  constructor: ->
+    super
+      width: 320
+      height: 288
+
+    @renderer.autoDensity = true
+
     @_events = {}
+    @_images = {}
     @_sprites = []
     @_timing =
       old: null
@@ -26,45 +29,57 @@ export default class Application
       offY: 0
       zoom: 2
 
+  _drawSprite: (o) ->
+    z = @viewport.zoom
+    img = @_images[o.spr]
+
+    w = o.w or 16
+    h = o.h or 16
+    ox = -w/2
+    oy = -h/2
+
+    g = @_context
+    g.save()
+    g.scale z, z
+    g.translate o.x, o.y
+    if o.sx isnt null and o.sy isnt null
+      g.drawImage img, o.sx, o.sy, w, h, ox, oy, w, h
+    else
+      g.drawImage img, ox, oy
+    g.restore()
+
   _draw: ->
     vp = @viewport
-    @_context.clearRect 0, 0, @_canvas.width, @_canvas.height
+    g = @_context
+    g.imageSmoothingEnabled = false
+    g.clearRect 0, 0, @_canvas.width, @_canvas.height
+    g.fillStyle = '#55aaff'
+    g.fillRect vp.offX, vp.offY, vp.width * vp.zoom, vp.height * vp.zoom
+    g.save()
+    g.translate vp.offX, vp.offY
+    for o, i in @_sprites
+      @_drawSprite o
+    g.restore()
 
   _tick: (t) =>
-    @_draw()
     ts = @_timing
     ts.old = ts.current or t
     ts.current = t
     ts.delta = ts.current - ts.old
     @tick(ts.delta, ts.current)
+
+    @_draw()
+
     if @running
       window.requestAnimationFrame @_tick
 
   _attachEvents: ->
     @_events.keydown = window.addEventListener "keydown", @_onKeyDown
     @_events.keyup = window.addEventListener "keyup", @_onKeyUp
-    if @fillPage
-      @_events.resize = window.addEventListener "resize", @_onResize
 
   _detachEvents: ->
     window.removeEventListener "keydown", @_onKeyDown
     window.removeEventListener "keyup", @_onKeyUp
-    if @fillPage
-      window.removeEventListener "resize", @_onResize
-
-  _onResize: =>
-    [w, h] = [window.innerWidth, window.innerHeight]
-    vp = @viewport
-    vw = vp.width
-    vh = vp.height
-
-    s = (Math.min((w / vw), (h / vh))) | 0
-    vp.offX = ((w - vw * s) / 2) | 0
-    vp.offY = ((h - vh * s) / 2) | 0
-    vp.zoom = s
-
-    @_canvas.width = w
-    @_canvas.height = h
 
   _onKeyDown: (evt) =>
     key = evt.key
@@ -82,7 +97,6 @@ export default class Application
 
   start: ->
     @_attachEvents()
-    @_onResize()
     @running = true
     @_tick()
 
@@ -91,6 +105,11 @@ export default class Application
     @running = false
 
   tick: (delta, current) ->
+
+  loadImage: (name, path) ->
+    img = new window.Image()
+    img.src = path
+    @_images[name] = img
 
   sprOn: (o) ->
     f = @_sprites.indexOf o
