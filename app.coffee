@@ -1,3 +1,5 @@
+PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.NEAREST
+
 export default class Application extends PIXI.Application
 
   constructor: ->
@@ -7,15 +9,16 @@ export default class Application extends PIXI.Application
 
     @renderer.autoDensity = true
 
+    PIXI.Loader.shared.on 'progress', (loader, resource) ->
+      console.log "Loaded #{loader.progress}%: #{resource.name}"
+
     @_events = {}
-    @_images = {}
     @_sprites = []
     @_timing =
       old: null
       current: null
       delta: null
 
-    @fillPage = true
     @running = false
 
     @camera =
@@ -48,27 +51,12 @@ export default class Application extends PIXI.Application
       g.drawImage img, ox, oy
     g.restore()
 
-  _draw: ->
-    vp = @viewport
-    g = @_context
-    g.imageSmoothingEnabled = false
-    g.clearRect 0, 0, @_canvas.width, @_canvas.height
-    g.fillStyle = '#55aaff'
-    g.fillRect vp.offX, vp.offY, vp.width * vp.zoom, vp.height * vp.zoom
-    g.save()
-    g.translate vp.offX, vp.offY
-    for o, i in @_sprites
-      @_drawSprite o
-    g.restore()
-
   _tick: (t) =>
     ts = @_timing
     ts.old = ts.current or t
     ts.current = t
     ts.delta = ts.current - ts.old
     @tick(ts.delta, ts.current)
-
-    @_draw()
 
     if @running
       window.requestAnimationFrame @_tick
@@ -84,6 +72,9 @@ export default class Application extends PIXI.Application
   _onKeyDown: (evt) =>
     key = evt.key
 
+    if @keyDown
+      @keyDown key
+
   _onKeyUp: (evt) =>
     key = evt.key
 
@@ -95,28 +86,34 @@ export default class Application extends PIXI.Application
       else
         console.log "Stopping loop..."
 
-  start: ->
+    else
+      if @keyUp
+        @keyUp key
+
+  _loadAssets: (path, dest) ->
+    new PIXI.Loader().add(path).load (evt, textures) ->
+      if dest
+        dest textures
+
+  startGame: ->
     @_attachEvents()
     @running = true
-    @_tick()
+    #@_tick()
 
-  stop: ->
+  stopGame: ->
     @_detachEvents()
     @running = false
 
   tick: (delta, current) ->
 
-  loadImage: (name, path) ->
-    img = new window.Image()
-    img.src = path
-    @_images[name] = img
+  loadAndDo: (container, sprite, func) ->
+    @_loadAssets sprite.source, (ts) ->
+      data = ts[sprite.source]
+      func data
+      container.addChild sprite
 
-  sprOn: (o) ->
-    f = @_sprites.indexOf o
-    if f < 0
-      @_sprites.push(o)
-
-  sprOff: (o) ->
-    f = @_sprites.indexOf o
-    if f >= 0
-      @_sprites.splice(f, 1)
+  loadAndAdd: (container, sprite) ->
+    @loadAndDo container, sprite, (ts) ->
+      sprite.texture = ts.texture
+      if sprite.onLoadedTexture
+        sprite.onLoadedTexture()

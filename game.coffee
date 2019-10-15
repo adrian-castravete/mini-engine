@@ -1,34 +1,67 @@
 import Application from "./app.js"
 
 
-class Player
+class Player extends PIXI.Sprite
 
   constructor: (game, x, y) ->
+    super()
+
     @x = x
     @y = y
-    @w = 16
-    @h = 32
+    #@width = 16
+    #@height = 32
+    @pivot.set 8, 16
     @sx = 48
     @sy = 32
-    @spr = 'player'
     @si = 0
 
-    @game = game
-    @game.loadImage 'player', "assets/images/player.png"
-    @game.sprOn this
+    @source = "assets/images/player.png"
 
   tick: ->
     @si += 1
     @sx = 16 * (@si % 4)
 
+  onLoadedTexture: ->
+    @buildFrames()
+    @texture.frame = @frames.still
+
+  buildFrames: ->
+    @frames =
+      still: new PIXI.Rectangle 16, 0, 16, 32
+
+
+class TiledLevel extends PIXI.Container
+
+  constructor: (app, stage, fileName) ->
+    super()
+
+    @source = fileName
+    vp = app.viewport
+
+    @scale = new PIXI.Point vp.zoom, vp.zoom
+    app.loadAndDo stage, this, (data) ->
+      console.log "Reached level load"
+
 
 export default class Game extends Application
 
-  constructor: (cvs) ->
-    super cvs
+  constructor: ->
+    super()
+
     @ellapsedTime = 0
     @lastTick = 0
+
+    stage = @stage
+    level = new TiledLevel this, stage, "assets/levels/test.json"
+
     @player = new Player this, 64, 48
+    @level = level
+
+    @loadAndAdd level, @player
+
+  keyDown: (key) =>
+
+  keyUp: (key) =>
 
   tick: (dt) ->
     @ellapsedTime += dt | 0
