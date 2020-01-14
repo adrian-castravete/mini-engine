@@ -1,5 +1,7 @@
 import Game from "./game.js"
 
+# comment
+
 main = ->
   app = new Game()
   document.body.appendChild app.view
